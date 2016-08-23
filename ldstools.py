@@ -4,9 +4,9 @@ import requests
 import getpass
 import json
 import sys
+import os
 
-# Info about the LDS Tools Web API can be found at:
-#   http://tech.lds.org/wiki/LDS_Tools_Web_Services
+from htdb import HomeTeachingDB
 
 class LDSTools(object):
     HTVT = {
@@ -14,15 +14,15 @@ class LDSTools(object):
         "members": "https://www.lds.org/htvt/services/v1/{unit}/members",
         "memberTags": "https://www.lds.org/htvt/services/v1/{unit}/members/tags",
         "districts": "https://www.lds.org/htvt/services/v1/{unit}/districts/{org}",
-        "assignment": "https://www.lds.org/htvt/services/v1/{unit}/assignment/{org}",
         "summaryStats": "https://www.lds.org/htvt/services/v1/{unit}/unit/summaryStats",
         "positions": "https://www.lds.org/htvt/services/v1/{unit}/auxiliaries/positions",
         "userStrings": "https://www.lds.org/htvt/services/v1/user/strings/",
     }
 
-    def __init__(self, username=None, password=None):
+    def __init__(self, username=None, password=None, working_dir="data"):
         super(LDSTools, self).__init__()
-        self.session = requests.session()
+        self.__authenticated = False
+        self._session = requests.session()
         self._username = username
         self._api = None
         self._user_detail = None
@@ -30,8 +30,18 @@ class LDSTools(object):
         self._members_and_callings = None
         self._members_htvt = None
         self._organization = None
+        self._districts = None
+        self._assignment = None
+        self._positions = None
+
+        if not os.path.exists(working_dir):
+            os.mkdir(working_dir)
+
+        self._cwd = working_dir
+
         if username and password:
             self.authenticate(username, password)
+
 
     def sign_in(self):
         self._username = self._username or raw_input("username: ")
@@ -42,13 +52,26 @@ class LDSTools(object):
         
     def authenticate(self, username, password):
         credentials = {'username' : username, 'password' : password}
-        self.session.post(self.api['auth-url'], data=credentials)
+        self._session.post(self.api['auth-url'], data=credentials)
         # TODO: Add a check to validate that authentication was successful
         self.__authenticated = True
         return self
 
     def getjson(self, url, *args, **kwargs):
-        return json.loads(self.session.get(url, *args, **kwargs).text)
+        import os, json             # workaround for a weird bug...
+
+        if url.find("{unit}") > -1 or url.find("{org}") > -1:
+            url = url.format(unit=self.unitNumber, org=self.organization)
+
+        print('Attempting to fetch "%s"' % url)
+        data = json.loads(self._session.get(url, *args, **kwargs).text)
+
+        # Store the retrieved data in a file
+        filename = os.path.splitext(os.path.basename(url))[0]
+        with open("%s/%s.json" % (self._cwd, filename), 'w') as fp:
+            json.dump(data, fp, indent=2)
+
+        return data
 
     @property
     def api(self):
@@ -80,6 +103,22 @@ class LDSTools(object):
             
 
     @property
+    def districts(self):
+        if self._districts is None:
+            self._districts = self.getjson(self.HTVT['districts'])
+
+        return self._districts
+
+
+    @property
+    def positions(self):
+        if self._positions is None:
+            self._positions = self.getjson(self.HTVT['positions'])
+
+        return self._positions
+
+
+    @property
     def unitNumber(self):
         return self.userDetail['homeUnitNbr']
 
@@ -96,9 +135,7 @@ class LDSTools(object):
     @property
     def households(self):
         if self._members_htvt is None:
-            unitNumber = str(self.unitNumber)
-            url = self.HTVT['members'].format(unit=unitNumber)
-            self._members_htvt = self.getjson(url)['families']
+            self._members_htvt = self.getjson(self.HTVT['members'])['families']
 
         return self._members_htvt
 
@@ -145,9 +182,12 @@ class LDSTools(object):
     def findHousehold(self, individualId):
         return self.findIndividualAndHouse(individualId)[1]
 
-
 if __name__=='__main__':
     ward = LDSTools()
     ward.sign_in()
 
     print 'Downloaded info for unit: %s - %d' % (ward.name, ward.unitNumber)
+
+    htdb = HomeTeachingDB()
+    htdb.updateHouseholds(ward.households)
+    htdb.updateDistricts(ward.districts)
