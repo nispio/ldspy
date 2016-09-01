@@ -191,3 +191,4 @@ if __name__=='__main__':
     htdb = HomeTeachingDB()
     htdb.updateHouseholds(ward.households)
     htdb.updateDistricts(ward.districts)
+    htdb.updatePositions(ward.positions)

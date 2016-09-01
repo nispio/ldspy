@@ -1,5 +1,4 @@
-
-CREATE TABLE members (
+CREATE TABLE IF NOT EXISTS members (
     individualId INTEGER PRIMARY KEY NOT NULL,
     headOfHouseIndividualId INTEGER,
     formattedName TEXT,
@@ -14,7 +13,7 @@ CREATE TABLE members (
     htAuxiliaries0 INTEGER
 );
 
-CREATE TABLE households (
+CREATE TABLE IF NOT EXISTS households (
     headOfHouseIndividualId INTEGER PRIMARY KEY NOT NULL,
     formattedCoupleName TEXT,
     isAssignedHT BOOLEAN,
@@ -28,7 +27,7 @@ CREATE TABLE households (
     postal TEXT
 );
 
-CREATE TABLE districts (
+CREATE TABLE IF NOT EXISTS districts (
     id INTEGER PRIMARY KEY NOT NULL,
     name TEXT,
     districtLeaderId INTEGER,
@@ -36,20 +35,19 @@ CREATE TABLE districts (
     districtLeaderIndividualId INTEGER
 );
 
-CREATE TABLE companionships (
+CREATE TABLE IF NOT EXISTS companionships (
     id INTEGER PRIMARY KEY NOT NULL,
     startDate INTEGER,
     districtId INTEGER
 );
 
-CREATE TABLE teachers (
+CREATE TABLE IF NOT EXISTS teachers (
     id INTEGER PRIMARY KEY NOT NULL,
     individualId INTEGER,
     companionshipId INTEGER
 );
 
-
-CREATE TABLE visits (
+CREATE TABLE IF NOT EXISTS visits (
     id INTEGER PRIMARY KEY NOT NULL,
     assignmentId INTEGER,
     month INTEGER,
@@ -57,13 +55,48 @@ CREATE TABLE visits (
     visited BOOLEAN
 );
 
-CREATE TABLE assignments (
+CREATE TABLE IF NOT EXISTS assignments (
     id INTEGER PRIMARY KEY NOT NULL,
     companionshipId INTEGER,
     individualId INTEGER,
     assignmentType TEXT
 );
 
+CREATE TABLE IF NOT EXISTS positions (
+            id INTEGER PRIMARY KEY NOT NULL,
+            positionTypeName TEXT,
+            orgTypeName TEXT,
+            positionTypeId INTEGER,
+            individualId INTEGER,
+            orgId INTEGER,
+            orgTypeId INTEGER
+);
+
+CREATE VIEW IF NOT EXISTS teacherInfo AS
+  SELECT * FROM teachers INNER JOIN members
+    WHERE members.individualId=teachers.individualId;
+
+CREATE VIEW IF NOT EXISTS assignmentInfo AS
+  SELECT * FROM assignments INNER JOIN members
+    WHERE assignments.individualId=members.individualId;
+
+CREATE VIEW IF NOT EXISTS positionInfo AS
+  SELECT * FROM positions INNER JOIN members
+    WHERE positions.individualId=members.individualId;
+
+CREATE VIEW IF NOT EXISTS districtInfo AS
+  SELECT * FROM districts INNER JOIN positionInfo
+    WHERE districtLeaderId=positionInfo.id;
+
+CREATE VIEW IF NOT EXISTS memberInfo AS
+  SELECT * FROM households INNER JOIN members
+    WHERE members.headOfHouseIndividualId=households.headOfHouseIndividualId;
+
+CREATE VIEW IF NOT EXISTS unassignedHouseholds AS
+  SELECT * FROM households
+    WHERE NOT EXISTS
+      (SELECT 1 FROM assignments
+         WHERE assignments.individualId=headOfHouseIndividualId);
 
 
 -- Local Variables:

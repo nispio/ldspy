@@ -9,7 +9,7 @@ HTVT_DB_SCHEMA = "htvt.sql"
 
 class HomeTeachingDB(object):
     def __init__(self, db=HTVT_DB_PATH, schema=HTVT_DB_SCHEMA):
-        self._initialized = os.path.exists(db)
+        self._initialized = False
         self._path = db
         self._conn = sqlite3.connect(db)
         self._conn.row_factory = sqlite3.Row
@@ -21,6 +21,7 @@ class HomeTeachingDB(object):
         self._households = HouseholdsTable(self._conn)
         self._members = MembersTable(self._conn)
         self._districts = DistrictsTable(self._conn)
+        self._positions = PositionsTable(self._conn)
         self._companionships = CompanionshipsTable(self._conn)
         self._teachers = TeachersTable(self._conn)
         self._assignments = AssignmentsTable(self._conn)
@@ -81,6 +82,14 @@ class HomeTeachingDB(object):
         self._visits.insertmany(visits)
 
 
+    def updatePositions(self, position_table):
+        positions = []
+        for org, org_positions in position_table.iteritems():
+            positions.extend(org_positions)
+
+        self._positions.insertmany(positions)
+
+
     def __call__(self, sql, args=None):
         with self._conn as db:
             if args is None:
@@ -91,6 +100,20 @@ class HomeTeachingDB(object):
                 db.executemany(sql, args)
 
             return db.fetchone()
+
+
+class PositionsTable(SqlTable):
+    def __init__(self, db, **kwargs):
+        keys = (
+            "id",
+            "positionTypeName",
+            "orgTypeName",
+            "positionTypeId",
+            "individualId",
+            "orgId",
+            "orgTypeId",
+        )
+        super(PositionsTable, self).__init__(db, table="positions", keys=keys, **kwargs)
 
 
 class DistrictsTable(SqlTable):
