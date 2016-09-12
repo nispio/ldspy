@@ -88,6 +88,14 @@ CREATE VIEW IF NOT EXISTS districtInfo AS
   SELECT * FROM districts INNER JOIN positionInfo
     WHERE districtLeaderId=positionInfo.id;
 
+CREATE VIEW IF NOT EXISTS companionInfo AS
+  SELECT * FROM teacherInfo INNER JOIN companionships
+    WHERE teacherInfo.companionshipId=companionships.id;
+
+CREATE VIEW IF NOT EXISTS companionshipInfo AS
+  SELECT * FROM companionInfo INNER JOIN districts
+    WHERE companionInfo.districtId=districts.id;
+
 CREATE VIEW IF NOT EXISTS memberInfo AS
   SELECT * FROM households INNER JOIN members
     WHERE members.headOfHouseIndividualId=households.headOfHouseIndividualId;
