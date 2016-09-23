@@ -106,6 +106,16 @@ CREATE VIEW IF NOT EXISTS unassignedHouseholds AS
       (SELECT 1 FROM assignments
          WHERE assignments.individualId=headOfHouseIndividualId);
 
+CREATE VIEW IF NOT EXISTS teacherAssignments AS
+  SELECT teachers.individualId, assignments.id AS assignmentId
+    FROM teachers INNER JOIN assignments
+      WHERE teachers.companionshipId=assignments.companionshipId;
+
+CREATE VIEW IF NOT EXISTS teacherVisits AS
+  SELECT teacherAssignments.individualId, visits.*
+    FROM visits INNER JOIN teacherAssignments
+      WHERE visits.assignmentId=teacherAssignments.assignmentId;
+
 
 -- Local Variables:
 -- mode: sql
